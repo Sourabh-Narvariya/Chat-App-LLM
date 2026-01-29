@@ -1,4 +1,5 @@
-# Chat-GPT Clone
+# Chat-App-Groq-Pinecone
+
 
 AI-powered chat app with Groq LLM & Pinecone memory management.
 
