@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Chat App{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>Chat Assistant</h1>
+        <button class="btn btn-secondary" onclick="clearChat()">Clear History</button>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+        <div class="system-message">
+            <p>Welcome! Start your conversation with the AI assistant.</p>
+        </div>
+    </div>
+    
+    <div class="chat-input-container">
+        <form onsubmit="handleSendMessage(event)">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your message here..." 
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit" class="btn btn-primary">Send</button>
+            </div>
+            <div class="options">
+                <label>
+                    <input type="checkbox" id="useMemory" checked>
+                    Use Memory Context
+                </label>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="loadingSpinner" class="loading-spinner" style="display: none;">
+    <div class="spinner"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sessionId = null;
+
+// Initialize chat session
+async function initializeSession() {
+    try {
+        const response = await fetch('/api/chat/session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            sessionId = data.session_id;
+            console.log('Session created:', sessionId);
+            loadChatHistory();
+        } else {
+            showError('Failed to create chat session');
+        }
+    } catch (error) {
+        console.error('Error creating session:', error);
+        showError('Error creating chat session: ' + error.message);
+    }
+}
+
+// Handle sending message
+async function handleSendMessage(event) {
+    event.preventDefault();
+    
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (!message || !sessionId) return;
+    
+    // Add user message to display
+    addMessageToChat('user', message);
+    input.value = '';
+    
+    // Show loading spinner
+    showLoading(true);
+    
+    try {
+        const useMemory = document.getElementById('useMemory').checked;
+        const response = await fetch('/api/chat/message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                session_id: sessionId,
+                message: message,
+                use_memory: useMemory,
+                top_k: 5
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            addMessageToChat('assistant', data.response);
+            console.log('Response metadata:', data.metadata);
+        } else {
+            const error = await response.json();
+            showError('Error: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        showError('Error sending message: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Add message to chat display
+function addMessageToChat(role, message) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + role;
+    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.textContent = message;
+    
+    messageDiv.appendChild(content);
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Load chat history
+async function loadChatHistory() {
+    try {
+        const response = await fetch(`/api/chat/history/${sessionId}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // Clear existing messages except system message
+            chatMessages.innerHTML = '<div class="system-message"><p>Chat history loaded</p></div>';
+            
+            // Add messages from history
+            for (const msg of data.history) {
+                const role = msg.role || 'user';
+                const messageText = msg.message || msg.content || '';
+                if (messageText) {
+                    addMessageToChat(role, messageText);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+    }
+}
+
+// Clear chat
+async function clearChat() {
+    if (!confirm('Are you sure you want to clear the chat history?')) return;
+    
+    try {
+        const response = await fetch(`/api/chat/clear/${sessionId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '<div class="system-message"><p>Chat history cleared</p></div>';
+        } else {
+            showError('Failed to clear chat');
+        }
+    } catch (error) {
+        console.error('Error clearing chat:', error);
+        showError('Error clearing chat: ' + error.message);
+    }
+}
+
+// Show/hide loading spinner
+function showLoading(show) {
+    document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+}
+
+// Show error message
+function showError(message) {
+    const chatMessages = document.getElementById('chatMessages');
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'message error';
+    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.textContent = message;
+    
+    errorDiv.appendChild(content);
+    chatMessages.appendChild(errorDiv);
+    
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initializeSession);
+</script>
+{% endblock %}

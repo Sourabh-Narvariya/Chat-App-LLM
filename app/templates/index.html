@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Chat App - LLM{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <div class="header">
+        <h1>Chat-GPT Clone</h1>
+        <p>Powered by Groq LLM & Pinecone Memory</p>
+    </div>
+    
+    <div class="main-content">
+        <div class="welcome-card">
+            <h2>Welcome to Chat App</h2>
+            <p>Start a new conversation with an AI assistant that remembers your chat history.</p>
+            <button class="btn btn-primary" onclick="startNewChat()">Start New Chat</button>
+        </div>
+        
+        <div class="features">
+            <h3>Features</h3>
+            <ul>
+                <li>🚀 Powered by Groq LLM for fast responses</li>
+                <li>💾 Pinecone vector database for memory management</li>
+                <li>🔍 Context-aware conversations</li>
+                <li>⚡ Real-time chat experience</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function startNewChat() {
+    window.location.href = '/chat';
+}
+</script>
+{% endblock %}
